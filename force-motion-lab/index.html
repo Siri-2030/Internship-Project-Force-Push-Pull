@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force & Motion Educational Lab</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --accent: #e74c3c;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: var(--dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { margin-bottom: 10px; }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .simulation-area {
+            flex: 2;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        canvas {
+            border-bottom: 4px solid #7f8c8d;
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(to bottom, #e0eafc, #cfdef3);
+            border-radius: 4px;
+        }
+
+        .controls-area {
+            flex: 1;
+            min-width: 250px;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .control-group { margin-bottom: 20px; }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] { width: 100%; cursor: pointer; }
+
+        .value-display { float: right; color: var(--primary); }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: transform 0.1s;
+            width: 100%;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        #pushBtn { background-color: var(--accent); color: white; }
+        #pushBtn.active { background-color: #c0392b; }
+        #resetBtn { background-color: var(--dark); color: white; }
+
+        .stats {
+            margin-top: 20px;
+            background: var(--light);
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .explanation {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #555;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Newton's Second Law Lab</h1>
+    <p>Explore how Force (N), Mass (kg), and Acceleration are related.</p>
+
+    <div class="container">
+        
+        <div class="simulation-area">
+            <canvas id="simCanvas" width="600" height="300"></canvas>
+        </div>
+
+        <div class="controls-area">
+            <div class="control-group">
+                <label>Object Mass (kg): <span id="massVal" class="value-display">10</span></label>
+                <input type="range" id="massInput" min="1" max="50" value="10">
+            </div>
+
+            <div class="control-group">
+                <label>Applied Force (N): <span id="forceVal" class="value-display">0</span></label>
+                <input type="range" id="forceInput" min="0" max="500" value="0">
+            </div>
+
+            <div class="btn-group">
+                <button id="pushBtn">Hold to Apply Force</button>
+                <button id="resetBtn">Reset</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-row">
+                    <span>Acceleration:</span>
+                    <span id="accDisplay">0.00 m/s²</span>
+                </div>
+                <div class="stat-row">
+                    <span>Velocity:</span>
+                    <span id="velDisplay">0.00 m/s</span>
+                </div>
+                <div class="stat-row">
+                    <span>Position X:</span>
+                    <span id="posDisplay">0.0 m</span>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <p><strong>F = ma</strong><br>Acceleration = Net Force / Mass</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let positionX = 50;
+        let velocity = 0;
+        let acceleration = 0;
+        let mass = 10;
+        let appliedForce = 0;
+        const frictionCoeff = 0.98;
+        const scalePixels = 10;
+
+        const massInput = document.getElementById('massInput');
+        const forceInput = document.getElementById('forceInput');
+        const pushBtn = document.getElementById('pushBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const massVal = document.getElementById('massVal');
+        const forceVal = document.getElementById('forceVal');
+        const accDisplay = document.getElementById('accDisplay');
+        const velDisplay = document.getElementById('velDisplay');
+        const posDisplay = document.getElementById('posDisplay');
+
+        massInput.addEventListener('input', (e) => {
+            mass = parseFloat(e.target.value);
+            massVal.textContent = mass;
+        });
+
+        forceInput.addEventListener('input', (e) => {
+            appliedForce = parseFloat(e.target.value);
+            forceVal.textContent = appliedForce;
+        });
+
+        const startPush = () => {
+            appliedForce = parseFloat(forceInput.value);
+            pushBtn.classList.add('active');
+        };
+        const endPush = () => {
+            appliedForce = 0;
+            pushBtn.classList.remove('active');
+        };
+
+        pushBtn.addEventListener('mousedown', startPush);
+        pushBtn.addEventListener('mouseup', endPush);
+        pushBtn.addEventListener('mouseleave', endPush);
+        pushBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPush(); });
+        pushBtn.addEventListener('touchend', (e) => { e.preventDefault(); endPush(); });
+
+        resetBtn.addEventListener('click', () => {
+            positionX = 50;
+            velocity = 0;
+            acceleration = 0;
+            appliedForce = 0;
+            forceInput.value = 0;
+            forceVal.textContent = "0";
+            pushBtn.classList.remove('active');
+        });
+
+        function update() {
+            acceleration = appliedForce / mass;
+            velocity += acceleration * 0.05;
+            velocity *= frictionCoeff;
+            positionX += velocity;
+
+            if (positionX < 25) { positionX = 25; velocity = -velocity * 0.5; }
+            if (positionX > canvas.width - 25) { positionX = canvas.width - 25; velocity = -velocity * 0.5; }
+
+            draw();
+            accDisplay.textContent = acceleration.toFixed(2) + " m/s²";
+            velDisplay.textContent = velocity.toFixed(2) + " m/s";
+            posDisplay.textContent = (positionX / scalePixels).toFixed(1) + " m";
+
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 250);
+            ctx.lineTo(600, 250);
+            ctx.strokeStyle = "#7f8c8d";
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            if (appliedForce > 0) {
+                let arrowLength = Math.min(appliedForce * 1.5, 100);
+                ctx.beginPath();
+                ctx.moveTo(positionX - 20, 230);
+                ctx.lineTo(positionX - 20 - arrowLength, 230);
+                ctx.lineTo(positionX - 20 - arrowLength + 10, 225);
+                ctx.moveTo(positionX - 20 - arrowLength, 230);
+                ctx.lineTo(positionX - 20 - arrowLength + 10, 235);
+                ctx.strokeStyle = "#e74c3c";
+                ctx.lineWidth = 5;
+                ctx.stroke();
+                ctx.fillStyle = "#e74c3c";
+                ctx.font = "bold 14px Arial";
+                ctx.fillText("F = " + appliedForce + "N", positionX - 40 - arrowLength, 210);
+            }
+
+            const boxSize = 20 + mass;
+            const boxY = 250 - boxSize;
+            ctx.fillStyle = "#3498db";
+            ctx.fillRect(positionX - boxSize/2, boxY, boxSize, boxSize);
+            
+            ctx.fillStyle = "#2c3e50";
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(mass + "kg", positionX, boxY + boxSize/2 + 5);
+        }
+
+        update();
+    </script>
+</body>
+</html>
