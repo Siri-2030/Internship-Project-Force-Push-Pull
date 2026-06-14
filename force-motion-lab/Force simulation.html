@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Force & Motion Interactive Discovery Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Crimson+Pro:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --push: #534AB7; --push-light: #EEEDFE;
+    --pull: #0F6E56; --pull-light: #E1F5EE;
+    --accent: #e74c3c; --neutral: #2C2C2A;
+    --neutral-light: #F1EFE8; --bg: #FAFAF8;
+    --white: #ffffff; --text: #1a1a18;
+    --muted: #5F5E5A; --border: rgba(0,0,0,0.08);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.5; overflow-x: hidden;
+  }
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+    background: var(--bg); position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo { font-weight: 700; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .nav-mode-badge { background: var(--neutral); color: white; padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; }
+  
+  .main-container { max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem; display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+  
+  /* EXPERIMENT BOX */
+  .lab-card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+  .lab-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+  .lab-title h1 { font-size: 1.6rem; font-weight: 700; }
+  .lab-title p { color: var(--muted); font-size: 0.9rem; }
+  
+  /* CONTROLS LAYOUT */
+  .lab-workspace { display: grid; grid-template-columns: 2.2fr 1fr; gap: 1.5rem; }
+  @media (max-width: 900px) { .lab-workspace { grid-template-columns: 1fr; } }
+  
+  canvas#simCanvas { width: 100%; height: 320px; background: linear-gradient(to bottom, #eef4fc, #d6e4f0); border-radius: 12px; border-bottom: 6px solid #7f8c8d; display: block; }
+  
+  .control-panel { display: flex; flex-direction: column; gap: 1.2rem; background: #fdfdfd; padding: 1.2rem; border-radius: 14px; border: 1px solid var(--border); }
+  .panel-section-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  
+  .btn-cluster { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .action-btn { padding: 12px; border: none; border-radius: 8px; font-family: inherit; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; transition: all 0.15s; text-align: center; }
+  .btn-left-force { background: var(--pull-light); color: var(--pull); border: 1px solid rgba(15,110,86,0.2); }
+  .btn-left-force.active { background: var(--pull); color: white; transform: scale(0.97); }
+  .btn-right-force { background: var(--push-light); color: var(--push); border: 1px solid rgba(83,74,183,0.2); }
+  .btn-right-force.active { background: var(--push); color: white; transform: scale(0.97); }
+  .reset-btn { background: var(--neutral-light); color: var(--neutral); grid-column: span 2; }
+  
+  .slider-item { display: flex; flex-direction: column; gap: 4px; }
+  .slider-item label { font-size: 0.85rem; font-weight: 700; display: flex; justify-content: space-between; }
+  .slider-item label span { color: var(--push); }
+  .slider-item input[type=range] { width: 100%; accent-color: var(--push); cursor: pointer; }
+  
+  .surface-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .surface-btn { padding: 8px 4px; font-size: 0.75rem; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 500; text-align: center; }
+  .surface-btn.active { background: var(--neutral); color: var(--white); font-weight: 700; }
+  
+  /* METRICS */
+  .metrics-header { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-top: 0.5rem; }
+  .metric-card { background: var(--neutral-light); padding: 10px; border-radius: 8px; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; font-weight: 500; }
+  .metric-card strong { display: block; font-size: 1.2rem; color: var(--text); margin-top: 2px; text-transform: none; }
+  
+  .toggle-switch { display: flex; background: var(--neutral-light); border-radius: 20px; padding: 2px; gap: 2px; width: fit-content; cursor: pointer; }
+  .toggle-opt { padding: 4px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 20px; }
+  .toggle-opt.active { background: var(--white); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+  /* PREDICTION & CHALLENGE NOTICES */
+  .interactive-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+  @media (max-width: 750px) { .interactive-bar { grid-template-columns: 1fr; } }
+  .widget-box { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 1.2rem; }
+  .widget-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px; }
+  
+  .predict-options { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .predict-btn { text-align: left; padding: 8px 12px; border: 1px solid var(--border); background: var(--bg); border-radius: 8px; font-family: inherit; font-size: 0.85rem; cursor: pointer; width: 100%; }
+  .predict-btn:hover { background: #eeeef5; }
+  .predict-btn.correct { background: #d1e7dd; border-color: #a3cfbb; color: #0f5132; font-weight: 700; }
+  .predict-btn.incorrect { background: #f8d7da; border-color: #f5c2c7; color: #842029; }
+  
+  .challenge-card { border-left: 4px solid #f39c12; background: #fffcf5; }
+  .challenge-status { font-weight: 700; margin-top: 8px; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+  .status-pass { background: #d1e7dd; color: #0f5132; }
+  .status-fail { background: #fff3cd; color: #664d03; }
+
+  /* LAB MINI EXPERIMENTS AREA */
+  .experiments-section { margin-top: 2rem; }
+  .exp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 1rem; }
+  .exp-node { background: var(--white); border: 1px solid var(--border); padding: 1.2rem; border-radius: 14px; text-align: center; cursor: pointer; transition: transform 0.15s; }
+  .exp-node:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.04); border-color: var(--push-mid); }
+  .exp-icon { font-size: 2rem; margin-bottom: 4px; display: block; }
+  .exp-node h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+  .exp-node p { font-size: 0.78rem; color: var(--muted); }
+
+  /* NCERT SORTING DRAG LAB */
+  .sorting-section { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; margin-top: 2rem; background: var(--white); border: 1px solid var(--border); padding: 1.5rem; border-radius: 20px; }
+  @media (max-width: 750px) { .sorting-section { grid-template-columns: 1fr; } }
+  .drag-pool { display: flex; flex-wrap: wrap; gap: 8px; align-content: start; margin-top: 8px; }
+  .drag-item { padding: 6px 12px; background: var(--neutral-light); border: 1px solid rgba(0,0,0,0.05); border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: grab; user-select: none; }
+  .drop-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .drop-target { background: var(--bg); border: 2px dashed #ccc; border-radius: 12px; padding: 12px; min-height: 120px; }
+  .drop-target h4 { font-size: 0.85rem; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 4px; }
+  
+  /* TRIMMED DISCOVERY TEXT CODES */
+  .discovery-reference { margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  @media (max-width: 750px) { .discovery-reference { grid-template-columns: 1fr; } }
+  .concept-block h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .concept-block p { font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
+  footer { margin-top: 4rem; text-align: center; padding: 2rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">⚡ Forces Discovery Lab</span>
+  <div class="nav-mode-badge">NCERT Mechanics Sandbox</div>
+</nav>
+
+<div class="main-container">
+  
+  <div class="lab-card">
+    <div class="lab-header">
+      <div class="lab-title">
+        <h1>1. Play &amp; Discover</h1>
+        <p>Apply overlapping balanced/unbalanced force vectors to test real-time physics outcomes.</p>
+      </div>
+    </div>
+    
+    <div class="lab-workspace">
+      <div>
+        <canvas id="simCanvas"></canvas>
+        
+        <div class="metrics-header">
+          <div class="panel-section-title" style="border:none; padding:0;">Live Kinematics Framework</div>
+          <div class="toggle-switch" onclick="toggleMetricComplexity()">
+            <div id="optBeg" class="toggle-opt active">Beginner Mode</div>
+            <div id="optAdv" class="toggle-opt">Advanced (F=ma)</div>
+          </div>
+        </div>
+        
+        <div class="metrics-grid">
+          <div class="metric-card">Net Force <strong id="mNetForce">0 N</strong></div>
+          <div class="metric-card">Speed <strong id="mSpeed">0.0 m/s</strong></div>
+          <div id="cardAcc" class="metric-card" style="display:none;">Acceleration <strong id="mAcc">0.00 m/s²</strong></div>
+          <div id="cardMass" class="metric-card" style="display:none;">Active Mass <strong id="mMass">10 kg</strong></div>
+          <div class="metric-card">Position X <strong id="mPos">5.0 m</strong></div>
+          <div class="metric-card">Effect State <strong id="mEffect" style="color:#e67e22;">At Rest</strong></div>
+        </div>
+      </div>
+      
+      <div class="control-panel">
+        <div class="panel-section-title">Step 1: Environment Material</div>
+        <div class="surface-selector">
+          <div class="surface-btn active" onclick="setSurface('ice', 0.0, '🧊 Ice (No Friction)')">Ice</div>
+          <div class="surface-btn" onclick="setSurface('floor', 0.04, '🪵 Smooth Wood')">Floor</div>
+          <div class="surface-btn" onclick="setSurface('road', 0.15, '🛣️ Asphalt Road')">Road</div>
+          <div class="surface-btn" onclick="setSurface('grass', 0.35, '🌿 Thick Grass')">Grass</div>
+        </div>
+        
+        <div class="panel-section-title">Step 2: Vectors Configuration</div>
+        <div class="slider-item">
+          <label>Left Pull Force Vector: <span id="valLeftForce" style="color:var(--pull)">0</span> N</label>
+          <input type="range" id="inputLeftForce" min="0" max="250" value="0">
+        </div>
+        <div class="slider-item">
+          <label>Right Push Force Vector: <span id="valRightForce">150</span> N</label>
+          <input type="range" id="inputRightForce" min="0" max="250" value="150">
+        </div>
+        <div class="slider-item">
+          <label>Payload Object Mass: <span id="valMass">10</span> kg</label>
+          <input type="range" id="inputMass" min="5" max="45" value="10">
+        </div>
+        
+        <div class="panel-section-title">Step 3: Apply Impulse Forces</div>
+        <div class="btn-cluster">
+          <button class="action-btn btn-left-force" id="btnApplyLeft">Apply Left Force</button>
+          <button class="action-btn btn-right-force" id="btnApplyRight">Apply Right Force</button>
+          <button class="action-btn reset-btn" onclick="resetLabEngine()">Reset Sandbox State</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="interactive-bar">
+    <div class="widget-box">
+      <div class="widget-title">🤔 Scientific Prediction Check</div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">If you double the Object's Mass parameter while keeping the applied force identical, what will happen to the acceleration speed?</p>
+      <div class="predict-options">
+        <button class="predict-btn" onclick="checkPrediction(this, false)">It will accelerate twice as fast</button>
+        <button class="predict-btn" onclick="checkPrediction(this, true)">It will accelerate much slower (Exactly half the rate)</button>
+        <button class="predict-btn" onclick="checkPrediction(this, false)">The acceleration profile remains completely unchanged</button>
+      </div>
+      <div id="predictFeedback" style="font-size:0.82rem; margin-top:8px; font-weight:500;"></div>
+    </div>
+    
+    <div class="widget-box challenge-card">
+      <div class="widget-title">🎯 Lab Mission Challenge</div>
+      <p style="font-size:0.85rem; color:var(--muted);" id="challengeText">Loading situational mission criteria...</p>
+      <div class="challenge-status status-fail" id="challengeStatus">Status: Criteria Unmet</div>
+    </div>
+  </div>
+
+  <div class="experiments-section">
+    <div class="panel-section-title" style="font-size:1rem;">2. Macro Real-Life Presets (Click to Load)</div>
+    <div class="exp-grid">
+      <div class="exp-node" onclick="loadPreset('door', 'push', 180, 8, 'floor', '🚪 Pushing an open door')">
+        <span class="exp-icon">🚪</span>
+        <h4>Opening a Door</h4>
+        <p>Pushing a light mass outward on wooden floor.</p>
+      </div>
+      <div class="exp-node" onclick="loadPreset('kick', 'push', 250, 5, 'grass', '⚽ Kicking a Football')">
+        <span class="exp-icon">⚽</span>
+        <h4>Kicking a Ball</h4>
+        <p>High explosive push impulse applied over dense grass friction.</p>
+      </div>
+      <div class="exp-node" onclick="loadPreset('cart', 'push', 80, 35, 'road', '🛒 Pushing Shopping Cart')">
+        <span class="exp-icon">🛒</span>
+        <h4>Pushing loaded Cart</h4>
+        <p>Sustained moderate push shifting a large structural mass payload.</p>
+      </div>
+      <div class="exp-node" onclick="loadPreset('magnet', 'pull', 120, 6, 'ice', '🧲 Magnet attracting Pin')">
+        <span class="exp-icon">🧲</span>
+        <h4>Magnetic Pull</h4>
+        <p>Non-contact force drawing a small metallic piece across low friction.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sorting-section">
+    <div>
+      <h3 style="font-size:1.1rem; font-weight:700;">3. Forces Sorting Box</h3>
+      <p style="font-size:0.82rem; color:var(--muted); margin-top:4px;">Drag and drop the identified forces into their correct physics classifications based on NCERT standards.</p>
+      <div class="drag-pool" id="dragPool">
+        <div class="drag-item" draggable="true" id="f-push">Muscular Push</div>
+        <div class="drag-item" draggable="true" id="f-grav">Gravity</div>
+        <div class="drag-item" draggable="true" id="f-fric">Friction</div>
+        <div class="drag-item" draggable="true" id="f-mag">Magnetism</div>
+        <div class="drag-item" draggable="true" id="f-pull">Mechanical Pull</div>
+      </div>
+    </div>
+    <div class="drop-zones">
+      <div class="drop-target" id="zone-contact" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'contact')">
+        <h4>Contact Forces</h4>
+      </div>
+      <div class="drop-target" id="zone-noncontact" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'noncontact')">
+        <h4>Non-Contact Forces</h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="discovery-reference">
+    <div class="concept-block">
+      <h3>⚖️ Balanced vs Unbalanced Profiles</h3>
+      <p>When equal opposing vectors act simultaneously on the coordinate node (e.g., Pulling 100N Left and Pushing 100N Right), the net vector forces cancel out exactly ($0\text{ N}$ Net Force), maintaining structural equilibrium. Motion vectors only initialize when the values turn <strong>unbalanced</strong>.</p>
+    </div>
+    <div class="concept-block">
+      <h3>💥 Five Direct Manifestations of Force</h3>
+      <p>Observe how force alters system baselines: (1) Initializing motion from rest, (2) Decelerating items to a complete halt, (3) Changing scalar execution speeds, (4) Adjusting dynamic tracking directions, and (5) Altering structural container bounds directly via physical payload stress mappings.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Newtonian Motion Discovery Laboratory Engine — Conceptualized for Play-First Learning.
+</footer>
+
+<script>
+// Main Global Application State Contexts
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+
+const dpr = window.devicePixelRatio || 1;
+const rect = canvas.getBoundingClientRect();
+canvas.width = rect.width * dpr; canvas.height = 320 * dpr;
+ctx.scale(dpr, dpr);
+const CW = rect.width, CH = 320;
+
+let posX = CW / 2; let velX = 0; let accX = 0;
+let mass = 10; let frictionCoeff = 0.0;
+let surfaceName = "🧊 Ice (No Friction)";
+let activeMetricMode = "beginner";
+
+let isLeftEngaged = false; let isRightEngaged = false;
+let forceLeftInput = 0; let forceRightInput = 150;
+let targetChallenge = { type: 'speed', value: 0, text: '', achieved: false };
+let boxShapeCompression = 1.0; // Changes asset width factor to visually show compression changes
+
+// UI Document Component Mappings 
+const inputLeft = document.getElementById('inputLeftForce');
+const inputRight = document.getElementById('inputRightForce');
+const inputMass = document.getElementById('inputMass');
+const valLeft = document.getElementById('valLeftForce');
+const valRight = document.getElementById('valRightForce');
+const valMass = document.getElementById('valMass');
+
+const btnApplyLeft = document.getElementById('btnApplyLeft');
+const btnApplyRight = document.getElementById('btnApplyRight');
+
+// Map Input Listeners for Real-time Slider State Synchronizations
+inputLeft.addEventListener('input', (e) => { forceLeftInput = +e.target.value; valLeft.textContent = forceLeftInput; });
+inputRight.addEventListener('input', (e) => { forceRightInput = +e.target.value; valRight.textContent = forceRightInput; });
+inputMass.addEventListener('input', (e) => { mass = +e.target.value; valMass.textContent = mass; });
+
+// Interactive Engagement Hooks Setup
+const setLeftActive = (state) => { isLeftEngaged = state; btnApplyLeft.classList.toggle('active', state); };
+const setRightActive = (state) => { isRightEngaged = state; btnApplyRight.classList.toggle('active', state); };
+
+btnApplyLeft.addEventListener('mousedown', () => setLeftActive(true));
+btnApplyLeft.addEventListener('mouseup', () => setLeftActive(false));
+btnApplyLeft.addEventListener('mouseleave', () => setLeftActive(false));
+btnApplyLeft.addEventListener('touchstart', (e) => { e.preventDefault(); setLeftActive(true); });
+btnApplyLeft.addEventListener('touchend', (e) => { e.preventDefault(); setLeftActive(false); });
+
+btnApplyRight.addEventListener('mousedown', () => setRightActive(true));
+btnApplyRight.addEventListener('mouseup', () => setRightActive(false));
+btnApplyRight.addEventListener('mouseleave', () => setRightActive(false));
+btnApplyRight.addEventListener('touchstart', (e) => { e.preventDefault(); setRightActive(true); });
+btnApplyRight.addEventListener('touchend', (e) => { e.preventDefault(); setRightActive(false); });
+
+function setSurface(type, coeff, name) {
+  frictionCoeff = coeff; surfaceName = name;
+  document.querySelectorAll('.surface-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(type));
+  });
+}
+
+function toggleMetricComplexity() {
+  activeMetricMode = (activeMetricMode === "beginner") ? "advanced" : "beginner";
+  document.getElementById('optBeg').classList.toggle('active', activeMetricMode === "beginner");
+  document.getElementById('optAdv').classList.toggle('active', activeMetricMode === "advanced");
+  document.getElementById('cardAcc').style.display = (activeMetricMode === "advanced") ? "block" : "none";
+  document.getElementById('cardMass').style.display = (activeMetricMode === "advanced") ? "block" : "none";
+}
+
+function generateChallenge() {
+  const types = ['speed', 'stop'];
+  const picked = types[Math.floor(Math.random() * types.length)];
+  if (picked === 'speed') {
+    const targetSpeed = (Math.random() * 4 + 2).toFixed(1);
+    targetChallenge = { type: 'speed', value: parseFloat(targetSpeed), text: `Mission: Use unbalanced vector outputs to accelerate the payload container to exactly <strong>${targetSpeed} m/s</strong>.`, achieved: false };
+  } else {
+    const targetMark = Math.floor(Math.random() * 20 + 40);
+    targetChallenge = { type: 'stop', value: targetMark, text: `Mission: Launch the object forward and let surface friction bring it to a complete halt exactly at mark <strong>+${targetMark} px</strong>.`, achieved: false };
+  }
+  document.getElementById('challengeText').innerHTML = targetChallenge.text;
+  document.getElementById('challengeStatus').className = "challenge-status status-fail";
+  document.getElementById('challengeStatus').textContent = "Status: Criteria Unmet";
+}
+
+function loadPreset(id, mode, fVal, mVal, surface, label) {
+  resetLabEngine();
+  mass = mVal; inputMass.value = mVal; valMass.textContent = mVal;
+  if (mode==='push') {
+    forceRightInput = fVal; inputRight.value = fVal; valRight.textContent = fVal;
+    forceLeftInput = 0; inputLeft.value = 0; valLeft.textContent = 0;
+  } else {
+    forceLeftInput = fVal; inputLeft.value = fVal; valLeft.textContent = fVal;
+    forceRightInput = 0; inputRight.value = 0; valRight.textContent = 0;
+  }
+  if (surface==='ice') setSurface('ice', 0.0, '🧊 Ice (No Friction)');
+  if (surface==='floor') setSurface('floor', 0.04, '🪵 Smooth Wood');
+  if (surface==='road') setSurface('road', 0.15, '🛣️ Asphalt Road');
+  if (surface==='grass') setSurface('grass', 0.35, '🌿 Thick Grass');
+}
+
+function checkPrediction(btn, isCorrect) {
+  const feedback = document.getElementById('predictFeedback');
+  document.querySelectorAll('.predict-btn').forEach(b => b.className = "predict-btn");
+  if (isCorrect) {
+    btn.classList.add('correct');
+    feedback.innerHTML = "🎯 Correct! Acceleration is inversely proportional to Mass ($a = F/m$). Heavier objects resist speed changes.";
+    feedback.style.color = "#0f5132";
+  } else {
+    btn.classList.add('incorrect');
+    feedback.innerHTML = "❌ Try again! Think about how a heavier object responds to the exact same pushing force.";
+    feedback.style.color = "#842029";
+  }
+}
+
+function resetLabEngine() {
+  posX = CW / 2; velX = 0; accX = 0; boxShapeCompression = 1.0;
+  setLeftActive(false); setRightActive(false);
+  document.getElementById('mNetForce').textContent = "0 N";
+  document.getElementById('mSpeed').textContent = "0.0 m/s";
+  document.getElementById('mAcc').textContent = "0.00 m/s²";
+  document.getElementById('mPos').textContent = "5.0 m";
+  document.getElementById('mEffect').textContent = "At Rest";
+  document.getElementById('mEffect').style.color = "#e67e22";
+}
+
+// DRAG AND DROP HANDLERS LAYER
+function allowDrop(ev) { ev.preventDefault(); }
+document.querySelectorAll('.drag-item').forEach(item => {
+  item.addEventListener('dragstart', (ev) => { ev.dataTransfer.setData("text", ev.target.id); });
+});
+function handleDrop(ev, zoneType) {
+  ev.preventDefault();
+  const data = ev.dataTransfer.getData("text");
+  const node = document.getElementById(data);
+  const contactMap = { 'f-push': 'contact', 'f-fric': 'contact', 'f-pull': 'contact', 'f-grav': 'noncontact', 'f-mag': 'noncontact' };
+  
+  if (contactMap[data] === zoneType) {
+    ev.target.appendChild(node);
+    node.style.background = "#d1e7dd";
+    node.style.cursor = "default";
+    node.setAttribute('draggable', 'false');
+  } else {
+    node.style.animation = "none";
+    setTimeout(() => { node.style.border = "1px solid var(--accent)"; }, 10);
+  }
+}
+
+// MAIN PHYSICS TIMESTEP ENGINE LOOP
+function computePhysicsFrame() {
+  const fLeft = isLeftEngaged ? forceLeftInput : 0;
+  const fRight = isRightEngaged ? forceRightInput : 0;
+  
+  // Calculate active net applied force vectors configuration
+  let appliedForceVector = fRight - fLeft;
+  
+  // Process environmental friction vectors counter-acting current movement velocity
+  let frictionVectorMagnitude = 0;
+  if (Math.abs(velX) > 0.01 || appliedForceVector !== 0) {
+    const normalForce = mass * 9.8;
+    frictionVectorMagnitude = normalForce * frictionCoeff;
+  }
+  
+  // Friction vector direction directly opposes structural acceleration direction velocity vectors
+  let activeFrictionVector = 0;
+  if (velX > 0) activeFrictionVector = -frictionVectorMagnitude;
+  else if (velX < 0) activeFrictionVector = frictionVectorMagnitude;
+  else {
+    // Static system thresholds checks limits
+    if (Math.abs(appliedForceVector) <= frictionVectorMagnitude) {
+      activeFrictionVector = -appliedForceVector; 
+    } else {
+      activeFrictionVector = -Math.sign(appliedForceVector) * frictionVectorMagnitude;
+    }
+  }
+  
+  let netForceVector = appliedForceVector + activeFrictionVector;
+  
+  // F = ma computation frame maps
+  accX = netForceVector / mass;
+  velX += accX * 0.04;
+  
+  // Natural environment static dampening decay boundaries
+  if (appliedForceVector === 0 && Math.abs(velX) < 0.1) { velX = 0; accX = 0; netForceVector = 0; }
+  
+  posX += velX;
+  
+  // Shape transformation distortion parameters when moving inside bounds limits
+  if (Math.abs(appliedForceVector) > 100) {
+    boxShapeCompression = Math.max(0.82, 1.0 - (Math.abs(appliedForceVector) * 0.0008));
+  } else {
+    boxShapeCompression += (1.0 - boxShapeCompression) * 0.1;
+  }
+
+  // Wall collisions bouncing systems
+  const boxDimension = 30 + mass;
+  if (posX < boxDimension/2) { posX = boxDimension/2; velX = -velX * 0.2; }
+  if (posX > CW - boxDimension/2) { posX = CW - boxDimension/2; velX = -velX * 0.2; }
+
+  // Update visual text counters elements
+  const parsedSpeed = (Math.abs(velX) * 2).toFixed(1);
+  document.getElementById('mNetForce').textContent = Math.round(netForceVector) + " N";
+  document.getElementById('mSpeed').textContent = parsedSpeed + " m/s";
+  document.getElementById('mAcc').textContent = accX.toFixed(2) + " m/s²";
+  document.getElementById('mPos').textContent = `+${Math.round(posX - CW/2)} px`;
+  
+  // Categorize standard operational NCERT motion states
+  const effectStateNode = document.getElementById('mEffect');
+  if (Math.abs(velX) < 0.02 && appliedForceVector === 0) {
+    effectStateNode.textContent = "At Rest"; effectStateNode.style.color = "#e67e22";
+  } else if (appliedForceVector !== 0 && Math.abs(netForceVector) <= 1) {
+    effectStateNode.textContent = "Balanced (No Change)"; effectStateNode.style.color = "#7f8c8d";
+  } else {
+    effectStateNode.textContent = "Unbalanced Motion"; effectStateNode.style.color = "var(--pull)";
+  }
+
+  // Evaluate dynamic gamified assignment states criteria mappings
+  if (!targetChallenge.achieved) {
+    const statusNode = document.getElementById('challengeStatus');
+    if (targetChallenge.type === 'speed' && parseFloat(parsedSpeed) === targetChallenge.value) {
+      targetChallenge.achieved = true;
+      statusNode.className = "challenge-status status-pass"; statusNode.textContent = "🎉 Mission Accomplished!";
+    } else if (targetChallenge.type === 'stop' && velX === 0 && Math.round(posX - CW/2) === targetChallenge.value) {
+      targetChallenge.achieved = true;
+      statusNode.className = "challenge-status status-pass"; statusNode.textContent = "🎉 Mission Accomplished!";
+    }
+  }
+
+  renderCanvasScene(appliedForceVector, activeFrictionVector, netForceVector);
+  requestAnimationFrame(computePhysicsFrame);
+}
+
+// CANVAS DRAWING & RENDER CONTROLLER
+function renderCanvasScene(appliedForce, frictionForce, netForce) {
+  ctx.clearRect(0, 0, CW, CH);
+  const groundY = 240;
+  const size = 30 + mass;
+  
+  // Render landscape surface textures natively
+  ctx.fillStyle = frictionCoeff === 0 ? "#eaf2f8" : (frictionCoeff < 0.1 ? "#ebdcb9" : "#bdc3c7");
+  ctx.fillRect(0, groundY, CW, 8);
+  
+  // Dynamic visual grids mapping positions
+  ctx.strokeStyle = "rgba(0,0,0,0.03)"; ctx.lineWidth = 2;
+  for(let i=0; i<CW; i+=40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, groundY); ctx.stroke(); }
+  
+  // Draw targeted flag vectors for positioning missions
+  if (targetChallenge.type === 'stop') {
+    const targetCanvasX = (CW / 2) + targetChallenge.value;
+    ctx.fillStyle = "#e67e22"; ctx.fillRect(targetCanvasX - 2, groundY - 40, 4, 40);
+    ctx.beginPath(); ctx.moveTo(targetCanvasX, groundY - 40); ctx.lineTo(targetCanvasX + 15, groundY - 32); ctx.lineTo(targetCanvasX, groundY - 24); ctx.fill();
+  }
+
+  // Render physical box entity model asset
+  const baseWidth = size * boxShapeCompression;
+  const baseHeight = size * (2.0 - boxShapeCompression);
+  const boxX = posX - baseWidth / 2;
+  const boxY = groundY - baseHeight;
+  
+  ctx.fillStyle = appliedForce === 0 ? "#3498db" : (netForce === 0 ? "#7f8c8d" : (appliedForce > 0 ? "var(--push)" : "var(--pull)"));
+  ctx.beginPath(); ctx.roundRect(boxX, boxY, baseWidth, baseHeight, 6); ctx.fill();
+  
+  // Core text metadata parameters stamped inside object block container bounds
+  ctx.fillStyle = "#ffffff"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center";
+  ctx.fillText(`${mass}kg`, posX, boxY + baseHeight/2 + 4);
+
+  // INVISIBLE FORCE VECTORS MATHEMATICAL OVERLAYS MAPPING VISUALIZATION
+  const vectorOriginY = groundY + 45;
+  ctx.lineWidth = 4;
+  
+  // 1. Plot Applied Force directional vectors line representations
+  if (isLeftEngaged || isRightEngaged) {
+    const fMag = forceRightInput - forceLeftInput;
+    if (fMag !== 0) {
+      ctx.strokeStyle = "#e67e22"; ctx.fillStyle = "#e67e22";
+      drawVisualArrowVector(posX, vectorOriginY, fMag * 0.5, "Applied Force Vector");
+    }
+  }
+  
+  // 2. Plot Environmental Friction resistive force vectors overlay parameters
+  if (Math.abs(frictionForce) > 1) {
+    ctx.strokeStyle = "#e74c3c"; ctx.fillStyle = "#e74c3c";
+    drawVisualArrowVector(posX, vectorOriginY + 16, frictionForce * 0.5, "Friction Resist Vector");
+  }
+  
+  // 3. Plot Total Resultant Net Force calculation systems pathways
+  if (Math.abs(netForce) > 1) {
+    ctx.strokeStyle = "var(--text)"; ctx.fillStyle = "var(--text)";
+    drawVisualArrowVector(posX, vectorOriginY + 32, netForce * 0.5, "Calculated Net Force (F=ma)");
+  }
+}
+
+function drawVisualArrowVector(srcX, srcY, len, label) {
+  if (Math.abs(len) < 4) return;
+  const destX = srcX + len;
+  ctx.beginPath(); ctx.moveTo(srcX, srcY); ctx.lineTo(destX, srcY); ctx.stroke();
+  
+  // Render directional micro arrow tip terminals profiles
+  const tipDirection = Math.sign(len);
+  ctx.beginPath();
+  ctx.moveTo(destX, srcY);
+  ctx.lineTo(destX - tipDirection * 6, srcY - 4);
+  ctx.lineTo(destX - tipDirection * 6, srcY + 4);
+  ctx.closePath(); ctx.fill();
+  
+  ctx.font = "500 10px 'Space Grotesk', Arial"; ctx.textAlign = len > 0 ? "left" : "right";
+  ctx.fillText(label, destX + (len > 0 ? 6 : -6), srcY + 3);
+}
+
+// Initial Bootstrap startup procedures configurations invocation loops
+generateChallenge();
+setSurface('ice', 0.0, '🧊 Ice (No Friction)');
+computePhysicsFrame();
+</script>
+</body>
+</html>
